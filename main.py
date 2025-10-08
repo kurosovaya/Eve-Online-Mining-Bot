@@ -1,3 +1,3 @@
-from Bot import bot
+from Bot import bot_new
 
-bot.start()
+bot_new.start()
