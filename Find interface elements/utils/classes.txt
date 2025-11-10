@@ -1,0 +1,6 @@
+Text
+UI
+Asteroid
+My ship
+Ship
+Planet

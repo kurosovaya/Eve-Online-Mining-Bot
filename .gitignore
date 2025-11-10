@@ -4,3 +4,5 @@ pyenv
 *.png
 build/
 dist/
+poetry.lock
+/Find interface elements/data/
