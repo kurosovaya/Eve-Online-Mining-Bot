@@ -3,8 +3,6 @@ import pyglet
 from threading import Event, Lock, Thread
 import time
 from ultralytics.models import YOLO
-from PIL import Image
-from pathlib import Path
 import queue
 
 
