@@ -11,11 +11,11 @@ latest_vis = None
 stop_event = Event()
 frame_lock = Lock()
 infer_q = queue.Queue(maxsize=1)
-capture = WindowsCapture("EVE - 2x")
+capture = WindowsCapture("EVE - ")
 window = pyglet.window.Window(width=capture.VIDEO_OUTPUT_WIDTH,
                                 height=capture.VIDEO_OUTPUT_HEIGHT,
                                 caption="Output", resizable=True)
-model = YOLO(r"Find interface elements/output_kaggle/results_v2/runs/y11s_custom/weights/best.pt")
+model = YOLO(r"D:\\Projects\\my_ml_backend\\models\\RectangleLabelsObbModel\\weights\\best.pt")
 CONF = 0.25
 IMGSZ = 960
 

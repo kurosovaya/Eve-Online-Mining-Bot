@@ -16,8 +16,8 @@ generated_paths = namedtuple("generated_paths", ["PROJECT_DIR", "ROOT_DIR", "ROO
                                                     "OUT_JSON"])
 
 folders = [
-    "2025-09-17_17-13-08",
-    # "2025-09-17_17-18-32",
+    # "2025-09-17_17-13-08",
+    "2025-09-17_17-18-32",
     # "2025-09-29_12-07-51",
     # "mining_asteroid_01_60_fps",
     # "mining_asteroid_02",
@@ -133,4 +133,4 @@ if __name__ == "__main__":
 
         # export_to_label_studio(data_path)
         label_studio_converter(data_path)
-        add_preview_to_json(data_path)
+        #add_preview_to_json(data_path)

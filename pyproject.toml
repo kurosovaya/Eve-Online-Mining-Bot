@@ -28,7 +28,8 @@ dependencies = [
     "pyglet (>=2.1.9,<3.0.0)",
     "windows-capture (>=1.5.0,<2.0.0)",
     "bettercam (>=1.0.0,<2.0.0)",
-    "label-studio-converter (>=0.0.59,<0.0.60)"
+    "label-studio-converter (>=0.0.59,<0.0.60)",
+    "label-studio-sdk (>=2.0.16,<3.0.0)"
 ]
 
 [virtualenvs]
