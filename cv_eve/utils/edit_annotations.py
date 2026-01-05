@@ -8,6 +8,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from math import inf
 from collections import namedtuple
+from cv_eve.lib.label_studio_classes.annotations import Annotations
+from cv_eve.lib.config import Config
+import json
+import threading
+from datetime import datetime
 
 
 cv.setNumThreads(1)
@@ -37,6 +42,8 @@ default_labels = [
 
 class EditAnnotationsAPI():
 
+    config = Config()
+
     def __init__(self, project_name, workers=4):
         self.client = LabelStudio(
             base_url="http://localhost:8080", api_key=os.environ["LABEL_STUDIO_API_KEY"]
@@ -44,30 +51,19 @@ class EditAnnotationsAPI():
         self.project_name = project_name
         self.workers = workers
 
-    def add_annotation(self, annotations, from_id_task=0, to_id_task=inf):
+    def add_annotation(self, annotations_list, from_id_task=0, to_id_task=inf):
         def process_task(task):
-            annotations_list = task.annotations[0]["result"] if task.annotations else list()
+            annotations = Annotations(self.client, task)
+            for ann in annotations_list:
+                annotations.add(ann)
+            annotations.write()
+        self.start_process_tasks(process_task, from_id_task, to_id_task)
 
-            template = {
-                        "original_width": 1920,
-                        "original_height": 1200,
-                        "image_rotation": 0,
-                        "value": None,
-                        "from_name": "label",
-                        "to_name": "image",
-                        "type": "rectanglelabels",
-                        "score": 1,
-                    }
-            
-            for ann in annotations:
-                templ_copy = template.copy()
-                templ_copy.update({"value": ann})
-                annotations_list.append(templ_copy)
-            if task.annotations:
-                self.client.annotations.update(task.annotations_ids, result=annotations_list)
-            else:
-                self.client.annotations.create(task.id, result=annotations_list)
-
+    def leave_only_better(self, label_name="", from_id_task=0, to_id_task=inf):
+        def process_task(task):
+            annotations = Annotations(self.client, task)
+            annotations.leave_only_better(label_name)
+            annotations.write()
         self.start_process_tasks(process_task, from_id_task, to_id_task)
 
     def delete_annotation(self, label_name, from_id_task=0, to_id_task=inf):
@@ -137,7 +133,6 @@ class EditAnnotationsAPI():
                 if label_From in ann["value"]["rectanglelabels"]:
                     ann["value"]["rectanglelabels"] = [label_to]
                     self.client.annotations.update(task.annotations_ids, result=annotations_list)
-
 
         self.start_process_tasks(process_task)
 
@@ -209,7 +204,6 @@ class EditAnnotationsAPI():
                         "from_name": "label",
                         "to_name": "image",
                         "type": "rectanglelabels",
-                        "score": best_score
                     }
                 )
                 if task.annotations:
@@ -238,30 +232,34 @@ class EditAnnotationsAPI():
                         print("ERROR:", e)
                     pbar.update(1)
 
+    def make_backup(self, from_id_task=0, to_id_task=inf):
+
+        lock = threading.Lock()
+        
+        backup_list = list()
+        def process_task(task):
+            with lock:
+                backup_list.append({"id": task.id,
+                                    "annotations_ids": task.annotations_ids,
+                                    "annotations": task.annotations})
+            
+        self.start_process_tasks(process_task, from_id_task, to_id_task)
+        backup_folder = Path(self.config.get("utils_backup_folder"))
+        os.makedirs(backup_folder, exist_ok=True)
+        datetime_str = datetime.today().strftime(r"%d_%m_%Y_%H_%M_%S")
+        with open(backup_folder / f"backup_annotations{datetime_str}.json", "w") as bk_an:
+            json.dump(backup_list, bk_an, ensure_ascii=False, indent=2)
+
 
 edit_annotations_api = EditAnnotationsAPI("EVE-Images")
+edit_annotations_api.make_backup()
 # edit_annotations_api.delete_all_annotations(from_id_task=14412)
 # edit_annotations_api.add_annotation(default_labels, from_id_task=14412)
 # edit_annotations_api.delete_overlap()
 # edit_annotations_api.rename_label("UI: OVerview panel", "UI: Overview panel")
 
-tempaltes = {
-    "UI: Bookmarks": r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\bookmarks.png",
-    "UI: Notifications": r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\notifications.png",
-    "UI: Selected object": [r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\selected_object.png",
-                            r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\selected_object_2.png"],
-    "UI: Warehouse": [r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\warehouses.png",
-                      r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\warehouses_2.png"],
-    "UI: Navigation": [r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\navigation.png",
-                       r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\navigation_2.png",
-                       r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\navigation_3.png",
-                       r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\navigation_4.png"],
-    "UI: Overview panel": [r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\overview panel.png",
-                           r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\overview panel_2.png",
-                           r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\overview panel_3.png",
-                           r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\overview panel_4.png"],
-    "UI: Ship fitting": r"D:\Projects\Eve-Online-Mining-Bot\Find interface elements\utils\templates\ship_fitting.png",
-}
 
-for label, template in tempaltes.items():
-    edit_annotations_api.find_elements_by_template(template, label, from_id_task=14412)
+# for label, template in tempaltes.items():
+#     edit_annotations_api.find_elements_by_template(template, label, from_id_task=14412)
+
+# edit_annotations_api.leave_only_better(from_id_task=14412)

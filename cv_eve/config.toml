@@ -1,0 +1,21 @@
+[general]
+project_name = "EVE-Images"
+workers = 8
+utils_backup_folder = "D:/Projects/Eve-Online-Mining-Bot/cv_eve/utils/backups"
+
+[templates]
+"UI: Bookmarks" = ["D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/bookmarks.png"]
+"UI: Notifications" = ["D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/notifications.png"]
+"UI: Selected object" = ["D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/selected_object.png",
+                        "D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/selected_object_2.png"]
+"UI: Warehouse" = ["D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/warehouses.png",
+                    "D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/warehouses_2.png"]
+"UI: Navigation" = ["D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/navigation.png",
+                    "D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/navigation_2.png",
+                    "D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/navigation_3.png",
+                    "D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/navigation_4.png"]
+"UI: Overview panel" = ["D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/overview panel.png",
+                        "D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/overview panel_2.png",
+                        "D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/overview panel_3.png",
+                        "D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/overview panel_4.png"]
+"UI: Ship fitting" = ["D:/Projects/Eve-Online-Mining-Bot/Find interface elements/utils/templates/ship_fitting.png"]

@@ -1,0 +1,18 @@
+Asteroid: 0
+My ship: 1
+My ship in hangar: 2
+Planet: 3
+Ship: 4
+Text: 5
+UI: 6
+UI: Bookmarks: 7
+UI: Chat: 8
+UI: Navigation: 9
+UI: Notifications: 10
+UI: Overview panel: 11
+UI: Selected object: 12
+UI: Ship fitting: 13
+UI: Ship infopanel: 14
+UI: Sidebar: 15
+UI: Station infopanel: 16
+UI: Warehouse: 17
