@@ -20,7 +20,7 @@ class Config():
 
         for section, options in self.cfg.items():
             if section == name:
-                return self.options[section]
+                return self.cfg[section]
             elif name in options:
                 return self._get_value(options, name)
         return None

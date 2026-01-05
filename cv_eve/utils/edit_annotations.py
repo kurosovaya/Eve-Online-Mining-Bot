@@ -44,7 +44,7 @@ class EditAnnotationsAPI():
 
     config = Config()
 
-    def __init__(self, project_name, workers=4):
+    def __init__(self, project_name=config.get("project_name"), workers=config.get("workers")):
         self.client = LabelStudio(
             base_url="http://localhost:8080", api_key=os.environ["LABEL_STUDIO_API_KEY"]
         )
@@ -251,6 +251,7 @@ class EditAnnotationsAPI():
             json.dump(backup_list, bk_an, ensure_ascii=False, indent=2)
 
 
+config = Config()
 edit_annotations_api = EditAnnotationsAPI("EVE-Images")
 edit_annotations_api.make_backup()
 # edit_annotations_api.delete_all_annotations(from_id_task=14412)
@@ -258,8 +259,8 @@ edit_annotations_api.make_backup()
 # edit_annotations_api.delete_overlap()
 # edit_annotations_api.rename_label("UI: OVerview panel", "UI: Overview panel")
 
+tempaltes = config.get("templates")
+for label, template in tempaltes.items():
+    edit_annotations_api.find_elements_by_template(template, label, from_id_task=14412)
 
-# for label, template in tempaltes.items():
-#     edit_annotations_api.find_elements_by_template(template, label, from_id_task=14412)
-
-# edit_annotations_api.leave_only_better(from_id_task=14412)
+edit_annotations_api.leave_only_better(from_id_task=14412)
