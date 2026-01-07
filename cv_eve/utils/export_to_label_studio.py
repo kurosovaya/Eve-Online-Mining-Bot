@@ -17,19 +17,19 @@ generated_paths = namedtuple("generated_paths", ["PROJECT_DIR", "ROOT_DIR", "ROO
 
 folders = [
     # "2025-09-17_17-13-08",
-    "2025-09-17_17-18-32",
+    # "2025-09-17_17-18-32",
     # "2025-09-29_12-07-51",
-    # "mining_asteroid_01_60_fps",
-    # "mining_asteroid_02",
+    "mining_asteroid_01_60_fps",
+    "mining_asteroid_02",
     # "mining_asteroid_03",
-    # "mining_asteroid_04",
+    "mining_asteroid_04",
 ]
 
 def generate_paths(folder_for_convertion, root_folder_name="pred2"):
 
     PROJECT_DIR = Path(f"EVE-images/{folder_for_convertion}")
-    ROOT_DIR = PROJECT_DIR / root_folder_name
-    IMAGES_DIR = Path(f"EVE-images/{folder_for_convertion}") / root_folder_name / "images"
+    ROOT_DIR = PROJECT_DIR / root_folder_name if root_folder_name else PROJECT_DIR
+    IMAGES_DIR = PROJECT_DIR / "images"
     PREVIEW_DIR = ROOT_DIR / "preview"
     INPUT_JSON = ROOT_DIR / "output.json"
     OUT_JSON = ROOT_DIR / "output_with_preview.json"
@@ -129,7 +129,7 @@ def add_preview_to_json(data_paths: generated_paths):
 if __name__ == "__main__":
     for fodler in folders:
 
-        data_path = generate_paths(fodler)
+        data_path = generate_paths(fodler, None)
 
         # export_to_label_studio(data_path)
         label_studio_converter(data_path)

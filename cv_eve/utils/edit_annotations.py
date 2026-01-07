@@ -13,6 +13,7 @@ from cv_eve.lib.config import Config
 import json
 import threading
 from datetime import datetime
+import logging
 
 
 cv.setNumThreads(1)
@@ -64,7 +65,7 @@ class EditAnnotationsAPI():
             annotations = Annotations(self.client, task)
             annotations.leave_only_better(label_name)
             annotations.write()
-        self.start_process_tasks(process_task, from_id_task, to_id_task)
+        self.start_process_tasks(process_task, from_id_task, to_id_task, "leave_only_better")
 
     def delete_annotation(self, label_name, from_id_task=0, to_id_task=inf):
         
@@ -143,7 +144,7 @@ class EditAnnotationsAPI():
             if item.title == project_name:
                 return item
             
-    def find_elements_by_template(self, template_path, label_name, threshold=0.80, from_id_task=0, to_id_task=inf):
+    def find_elements_by_template(self, template_path, label_name, threshold=0.75, from_id_task=0, to_id_task=inf):
 
         ann_template = {
             "rotation": 0,
@@ -213,24 +214,40 @@ class EditAnnotationsAPI():
 
         self.start_process_tasks(process_task, from_id_task, to_id_task)
 
-    def start_process_tasks(self, process_task, from_id_task=0, to_id_task=inf):
+    def start_process_tasks(self, process_task, from_id_task=0, to_id_task=inf, desc_add=""):
         project = self.get_project_by_name(self.project_name)
         resp = self.client.tasks.list(project=project.id, page_size=100, fields="all")
 
-        futures = []
+        future_to_task_id = {}
         with ThreadPoolExecutor(self.workers) as ex:
-            tasks_count = 0
+            future_to_task_id = {}
             for task in resp:
                 if from_id_task <= task.id <= to_id_task:
-                    futures.append(ex.submit(process_task, task))
-                    tasks_count += 1
-            with tqdm(total=tasks_count, desc="Processing", unit="task") as pbar:
-                for f in as_completed(futures):
+                    fut = ex.submit(process_task, task)
+                    future_to_task_id[fut] = task.id
+            with tqdm(total=len(future_to_task_id), desc=" ".join(["Processing", desc_add]), unit="task") as pbar:
+                for f in as_completed(future_to_task_id):
                     try:
                         f.result()
-                    except Exception as e:
-                        print("ERROR:", e)
+                    except Exception:
+                        task_id = future_to_task_id[f]
+                        logging.exception("Task failed (task_id=%s)", task_id)
                     pbar.update(1)
+
+    def restore_backup(self, file=None, from_id_task=0, to_id_task=inf):
+        
+        backup_folder = Path(self.config.get("utils_backup_folder"))
+        if file is None:
+            file = "bwaefwa"
+        backup_data = None
+        with open(backup_folder / file, "r", encoding="cp1251") as bk_an:
+            backup_data = json.load(bk_an)
+
+        id_result_dict = {data['annotations_ids']: data["annotations"][0]["result"] for data in backup_data}
+        def process_task(task):
+            self.client.annotations.update(task.annotations_ids, result=id_result_dict[task.annotations_ids])
+
+        self.start_process_tasks(process_task, from_id_task, to_id_task, "restore_backup")
 
     def make_backup(self, from_id_task=0, to_id_task=inf):
 
@@ -243,24 +260,26 @@ class EditAnnotationsAPI():
                                     "annotations_ids": task.annotations_ids,
                                     "annotations": task.annotations})
             
-        self.start_process_tasks(process_task, from_id_task, to_id_task)
+        self.start_process_tasks(process_task, from_id_task, to_id_task, "make_backup")
         backup_folder = Path(self.config.get("utils_backup_folder"))
         os.makedirs(backup_folder, exist_ok=True)
         datetime_str = datetime.today().strftime(r"%d_%m_%Y_%H_%M_%S")
-        with open(backup_folder / f"backup_annotations{datetime_str}.json", "w") as bk_an:
+        with open(backup_folder / f"backup_annotations{datetime_str}.json", "w", encoding="utf-8") as bk_an:
             json.dump(backup_list, bk_an, ensure_ascii=False, indent=2)
 
 
 config = Config()
 edit_annotations_api = EditAnnotationsAPI("EVE-Images")
-edit_annotations_api.make_backup()
+
+# edit_annotations_api.restore_backup("backup_annotations07_01_2026_01_14_26.json")
+# edit_annotations_api.make_backup()
 # edit_annotations_api.delete_all_annotations(from_id_task=14412)
 # edit_annotations_api.add_annotation(default_labels, from_id_task=14412)
 # edit_annotations_api.delete_overlap()
 # edit_annotations_api.rename_label("UI: OVerview panel", "UI: Overview panel")
 
-tempaltes = config.get("templates")
-for label, template in tempaltes.items():
-    edit_annotations_api.find_elements_by_template(template, label, from_id_task=14412)
-
-edit_annotations_api.leave_only_better(from_id_task=14412)
+# tempaltes = config.get("templates")
+#label, template = "UI: Overview panel", tempaltes["UI: Overview panel"]
+# for label, template in tempaltes.items():
+#     edit_annotations_api.find_elements_by_template(template, label, from_id_task=14524)
+edit_annotations_api.leave_only_better()
