@@ -5,4 +5,5 @@ pyenv
 build/
 dist/
 poetry.lock
-/Find interface elements/data/
+/cv_eve/annotating/backups/
+/cv_eve/annotating/exports/

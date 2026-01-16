@@ -1,0 +1,21 @@
+[general]
+project_name = 'EVE-Images'
+workers = 8
+utils_backup_folder = 'D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\backups'
+only_once_per_task = ["UI: Bookmarks", "UI: Notifications", "UI: Selected object", "UI: Warehouse",
+"UI: Navigation", "UI: Overview panel", "UI: Ship fitting", "UI: Station infopanel", "UI: Sidebar",
+"UI: Ship infopanel", "UI: Chat"]
+dataset_folder = 'D:\Datasets\EVE-images'
+
+[templates]
+'UI: Bookmarks' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\bookmarks']
+'UI: Notifications' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\notifications']
+'UI: Selected object' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\selected_object']
+'UI: Warehouse' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\warehouses']
+'UI: Navigation' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\navigation']
+'UI: Overview panel' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\overview panel']
+'UI: Ship fitting' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\ship_fitting']
+'UI: Station infopanel' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\station_infopanel']
+'UI: Sidebar' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\side_panel']
+'UI: Ship infopanel' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\ship_status']
+'UI: Chat' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\chat']
