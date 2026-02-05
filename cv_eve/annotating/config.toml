@@ -6,6 +6,7 @@ only_once_per_task = ["UI: Bookmarks", "UI: Notifications", "UI: Selected object
 "UI: Navigation", "UI: Overview panel", "UI: Ship fitting", "UI: Station infopanel", "UI: Sidebar",
 "UI: Ship infopanel", "UI: Chat"]
 dataset_folder = 'D:\Datasets\EVE-images'
+ref_folder = 'D:\Projects\Eve-Online-Mining-Bot\cv_eve\references'
 
 [templates]
 'UI: Bookmarks' = ['D:\Projects\Eve-Online-Mining-Bot\cv_eve\utils\templates\bookmarks']

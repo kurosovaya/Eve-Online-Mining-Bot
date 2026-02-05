@@ -4,62 +4,87 @@ from threading import Event, Lock, Thread
 import time
 from ultralytics.models import YOLO
 import queue
+import numpy as np
 
 
-latest_frame = None
 latest_vis = None
+INFER_FPS = 30
 stop_event = Event()
 frame_lock = Lock()
 infer_q = queue.Queue(maxsize=1)
-capture = WindowsCapture("EVE - ")
+capture = WindowsCapture("EVE Launc")
 window = pyglet.window.Window(width=capture.VIDEO_OUTPUT_WIDTH,
                                 height=capture.VIDEO_OUTPUT_HEIGHT,
                                 caption="Output", resizable=True)
+fps_display = pyglet.window.FPSDisplay(window)
 model = YOLO(r"D:\\Projects\\my_ml_backend\\models\\RectangleLabelsObbModel\\weights\\best.pt")
+img = None
+_buf = None
+_buf_np = None
 CONF = 0.25
 IMGSZ = 960
 
 
 @window.event
 def on_draw():
+    global img, _buf, _buf_np
     window.clear()
     with frame_lock:
-        frame = None if latest_vis is None else latest_vis.copy()
+        frame = None if latest_vis is None else latest_vis
     if frame is None:
         pyglet.text.Label("No frames yet...", x=10, y=window.height-20).draw()
         return
     h, w = frame.shape[:2]
-    data = frame.tobytes()
-    img = pyglet.image.ImageData(w, h, 'BGR', data, pitch=-w*3)
+    if not frame.flags["C_CONTIGUOUS"]:
+        frame = np.ascontiguousarray(frame)
+    if img is None:        
+        _buf = bytearray(w * h * 3)
+        _buf_np = np.frombuffer(_buf, dtype=np.uint8)
+        _buf_np[:] = frame.reshape(-1)
+        img = pyglet.image.ImageData(w, h, 'BGR', _buf, pitch=-w*3)
+    else:
+        _buf_np[:] = frame.reshape(-1)
+        img.set_data('BGR', -w * 3, _buf) 
     img.blit(0, 0, width=window.width, height=window.height)
+    fps_display.draw()
 
 def screen_capture():
-    global latest_frame
 
     while not stop_event.is_set():
         frame = capture.get_latest_frame()
         if frame is None:
             time.sleep(0.001)
             continue
-        with frame_lock:
-            latest_frame = frame
+
+        try:
+            infer_q.get_nowait()
+        except queue.Empty:
+            pass
+        try:
+            infer_q.put_nowait(frame)
+        except queue.Full:
+            pass
 
 def inference_thread_func():
-    global latest_vis, latest_frame
+    global latest_vis
     while True:
-        with frame_lock:
-            frame_bgr = latest_frame  # блокируемся, ждём новый кадр
+        frame_bgr = infer_q.get()
         if frame_bgr is None:
             continue
 
-        # Быстрый режим без лишнего вывода и без сохранений на диск
+        infer_period = 1.0 / INFER_FPS
+        last = 0.0
+
+        now = time.perf_counter()
+        if now - last < infer_period:
+            continue
+        last = now
+
         results = model.predict(
             source=frame_bgr, imgsz=IMGSZ, conf=CONF,
-            save=False, stream=False, verbose=False, device="cpu"  # или "cuda:0"
+            save=False, stream=False, verbose=False, device="cpu"
         )
         res = results[0]
-
-        # Получаем аннотированную картинку (BGR) и конвертируем обратно в RGB для pyglet
         vis_bgr = res.plot()
 
         with frame_lock:

@@ -105,20 +105,19 @@ edit_annotations_api = EditAnnotationsAPI()
 
 # edit_annotations_api.restore_backup("backup_annotations07_01_2026_01_14_26.json")
 # edit_annotations_api.make_backup()
+# edit_annotations_api.rename_label("UI: OVerview panel", "UI: Overview panel")
 
 # tempaltes = config.get("templates")
 # edit_annotations_api.delete_annotation('UI: Ship infopanel', 18445)
 # edit_annotations_api.delete_annotation('UI: Ship infopanel', 18021, 18076)
 # edit_annotations_api.delete_all_annotations(from_id_task=18021)
 #edit_annotations_api.find_elements_by_template(tempaltes, 0.55, from_id_task=18547)
-# client = LabelStudio(
-#             base_url="http://localhost:8080", api_key=os.environ["LABEL_STUDIO_API_KEY"]
-#         )
+client = LabelStudio(
+            base_url="http://localhost:8080", api_key=os.environ["LABEL_STUDIO_API_KEY"]
+        )
 
-
-
-edit_annotations_api.update_fields_by_function_task(from_id_task=17000)
-# annotations = Task(client, 19113).get_annotations()
-# annotations_values = annotations.values()
-# edit_annotations_api.add_annotation(annotations_values, from_id_task=19114)
-# edit_annotations_api.leave_only_better(from_id_task=19114)
+edit_annotations_api.delete_all_annotations(19349)
+annotations = Task(client, 19348).get_annotations()
+annotations_values = annotations.values()
+edit_annotations_api.add_annotation(annotations_values, from_id_task=19349)
+# edit_annotations_api.leave_only_better(from_id_task=19349)
