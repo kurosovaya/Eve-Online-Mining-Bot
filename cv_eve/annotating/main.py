@@ -116,8 +116,8 @@ client = LabelStudio(
             base_url="http://localhost:8080", api_key=os.environ["LABEL_STUDIO_API_KEY"]
         )
 
-edit_annotations_api.delete_all_annotations(19349)
-annotations = Task(client, 19348).get_annotations()
+# edit_annotations_api.delete_all_annotations(19349)
+annotations = Task(client, 23627).get_annotations()
 annotations_values = annotations.values()
-edit_annotations_api.add_annotation(annotations_values, from_id_task=19349)
+edit_annotations_api.add_annotation(annotations_values, from_id_task=23628)
 # edit_annotations_api.leave_only_better(from_id_task=19349)
