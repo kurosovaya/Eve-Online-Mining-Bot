@@ -6,14 +6,20 @@ from ultralytics.models import YOLO
 import queue
 import numpy as np
 import cv2
-from cv_eve.lib.other.snapshot import Snapshot, SharedState
+from lib.other.snapshot import Snapshot, SharedState
+import logging
+from random import randint
 
 
 latest_vis = None
+yolo_latest_res = None
+yolo_lock = Lock()
 INFER_FPS = 30
+CV_FPS = 10
 stop_event = Event()
 frame_lock = Lock()
 infer_q = queue.Queue(maxsize=1)
+yolo_frame_q = queue.Queue(maxsize=1)
 shared_state = SharedState()
 capture = WindowsCapture(
     monitor_index=None,
@@ -50,6 +56,7 @@ def on_frame_arrived(frame: Frame, control: InternalCaptureControl):
     try:
         bgr = np.ascontiguousarray(bgr).copy()
         infer_q.put_nowait(bgr)
+        yolo_frame_q.put_nowait(bgr)
     except queue.Full:
         pass
 
@@ -82,7 +89,7 @@ def on_draw():
 
 
 def inference_thread_func():
-    global latest_vis
+    global latest_vis, yolo_latest_res, yolo_lock
     infer_period = 1.0 / INFER_FPS
     last = 0.0
     while True:
@@ -94,33 +101,46 @@ def inference_thread_func():
         if now - last < infer_period:
             continue
         last = now
+        res = None
+        with yolo_lock:
+            res = yolo_latest_res
+        if res is not None:
+            res = res[0]
+            polys = res.obb.xyxyxyxy
+            confs = res.obb.conf
+            clss  = res.obb.cls
 
-        results = model.predict(
-            source=frame_bgr, imgsz=IMGSZ, conf=CONF,
-            save=False, stream=False, verbose=False, device="cpu"
-        )
-        res = results[0]
-        polys = res.obb.xyxyxyxy
-        confs = res.obb.conf
-        clss  = res.obb.cls
+            polys = polys.cpu().numpy().astype(np.int32)   # (N,4,2)
+            confs = confs.cpu().numpy()
+            clss  = clss.cpu().numpy().astype(int)
+            # shared_state.update(Snapshot())
 
-        polys = polys.cpu().numpy().astype(np.int32)   # (N,4,2)
-        confs = confs.cpu().numpy()
-        clss  = clss.cpu().numpy().astype(int)
-        shared_state.update(Snapshot())
-
-        for poly, conf, cls_id in zip(polys, confs, clss):
-            pts = poly.astype(np.int32).reshape(-1, 1, 2)  # (4,1,2)
-            cv2.polylines(frame_bgr, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
-            label = f"{res.names[int(cls_id)]} {conf:.2f}"
-            x, y = pts[0, 0]
-            cv2.putText(frame_bgr, label, (x, max(0, y - 5)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+            for poly, conf, cls_id in zip(polys, confs, clss):
+                pts = poly.astype(np.int32).reshape(-1, 1, 2)  # (4,1,2)
+                color = randint(0, 255), randint(0, 255), randint(0, 255)
+                cv2.polylines(frame_bgr, [pts], isClosed=True, color=color, thickness=2)
+                label = f"{res.names[int(cls_id)]} {conf:.2f}"
+                x, y = pts[0, 0]
+                cv2.putText(frame_bgr, label, (x, max(0, y - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
             
         with frame_lock:
             latest_vis = frame_bgr
 
 
+def cv_thread_func():
+    global yolo_latest_res, yolo_lock
+
+    while True:
+        frame_bgr = yolo_frame_q.get()
+        if frame_bgr is None:
+            continue
+        results = model.predict(
+            source=frame_bgr, imgsz=IMGSZ, conf=CONF,
+            save=False, stream=False, verbose=False, device="cpu"
+        )
+        yolo_latest_res = results
+        time.sleep(1.0 / CV_FPS)
 
 def update(dt):
     window.dispatch_event('on_draw')
@@ -132,12 +152,14 @@ def _on_close_handler():
 
 window.push_handlers(on_close=_on_close_handler)
 inference_thread = Thread(target=inference_thread_func, daemon=True)
+cv_thread = Thread(target=cv_thread_func, daemon=True)
 pyglet.clock.schedule_interval(update, 1.0 / INFER_FPS)
 
 if __name__ == "__main__":
     try:
         capture.start_free_threaded()
         inference_thread.start()
+        cv_thread.start()
         pyglet.app.run()
     finally:
         stop_event.set()
