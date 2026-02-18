@@ -1,22 +1,27 @@
 from dataclasses import dataclass
 import threading
 import numpy as np
+import torch
+import queue
+from ultralytics.engine.results import Results
+
 
 @dataclass(frozen=True)
 class Snapshot:
-    t: float
-    frame: np.ndarray          # BGR image
-    detections: object         # boxes/masks/whatever you store
+    frame_bgr: np.ndarray
+    res: Results
+
 
 class SharedState:
     def __init__(self):
         self._lock = threading.Lock()
-        self._snapshot: Snapshot | None = None
+        self._snapshot = queue.Queue(maxsize=1)
 
     def update(self, snap: Snapshot):
-        with self._lock:
-            self._snapshot = snap
+        try:
+            self._snapshot.put_nowait(snap)
+        except queue.Full:
+            pass
 
     def get(self) -> Snapshot | None:
-        with self._lock:
-            return self._snapshot
+        return self._snapshot.get()

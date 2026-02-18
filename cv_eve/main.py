@@ -7,8 +7,8 @@ import queue
 import numpy as np
 import cv2
 from lib.other.snapshot import Snapshot, SharedState
-import logging
-from random import randint
+from lib.logic.bot import Bot
+from lazy_ls.utils.str_to_rgb import str_to_rgb
 
 
 latest_vis = None
@@ -26,13 +26,13 @@ capture = WindowsCapture(
     window_name="EVE - Kurosovaya I",
     cursor_capture=False,
     draw_border=False,
-    minimum_update_interval=1000 // INFER_FPS
+    minimum_update_interval=1000 // INFER_FPS,
 )
-window = pyglet.window.Window(width=1280,
-                              height=720,
-                              caption="Output", resizable=False)
+window = pyglet.window.Window(width=1280, height=720, caption="Output", resizable=False)
 fps_display = pyglet.window.FPSDisplay(window)
-model = YOLO(r"D:\Projects\my_ml_backend\models\runs\obb\runs\y11s_custom_1920\weights\best.pt")
+model = YOLO(
+    r"D:\Projects\my_ml_backend\models\runs\obb\runs\y11s_custom_1920\weights\best.pt"
+)
 img = None
 _buf = None
 _buf_np = None
@@ -60,9 +60,11 @@ def on_frame_arrived(frame: Frame, control: InternalCaptureControl):
     except queue.Full:
         pass
 
+
 @capture.event
 def on_closed():
     print("Capture closed")
+
 
 @window.event
 def on_draw():
@@ -71,7 +73,7 @@ def on_draw():
     with frame_lock:
         frame = None if latest_vis is None else latest_vis
     if frame is None:
-        pyglet.text.Label("No frames yet...", x=10, y=window.height-20).draw()
+        pyglet.text.Label("No frames yet...", x=10, y=window.height - 20).draw()
         return
     h, w = frame.shape[:2]
     if not frame.flags["C_CONTIGUOUS"]:
@@ -80,16 +82,16 @@ def on_draw():
         _buf = bytearray(w * h * 3)
         _buf_np = np.frombuffer(_buf, dtype=np.uint8)
         _buf_np[:] = frame.reshape(-1)
-        img = pyglet.image.ImageData(w, h, 'BGR', _buf, pitch=-w*3)
+        img = pyglet.image.ImageData(w, h, "BGR", _buf, pitch=-w * 3)
     else:
         _buf_np[:] = frame.reshape(-1)
-        img.set_data('BGR', -w * 3, _buf) 
+        img.set_data("BGR", -w * 3, _buf)
     img.blit(0, 0, width=window.width, height=window.height)
     fps_display.draw()
 
 
 def inference_thread_func():
-    global latest_vis, yolo_latest_res, yolo_lock
+    global latest_vis, yolo_latest_res, yolo_lock, shared_state
     infer_period = 1.0 / INFER_FPS
     last = 0.0
     while True:
@@ -108,22 +110,30 @@ def inference_thread_func():
             res = res[0]
             polys = res.obb.xyxyxyxy
             confs = res.obb.conf
-            clss  = res.obb.cls
+            clss = res.obb.cls
 
-            polys = polys.cpu().numpy().astype(np.int32)   # (N,4,2)
+            polys = polys.cpu().numpy().astype(np.int32)  # (N,4,2)
             confs = confs.cpu().numpy()
-            clss  = clss.cpu().numpy().astype(int)
-            # shared_state.update(Snapshot())
+            clss = clss.cpu().numpy().astype(int)
+            shared_state.update(Snapshot(frame_bgr, res))
 
             for poly, conf, cls_id in zip(polys, confs, clss):
                 pts = poly.astype(np.int32).reshape(-1, 1, 2)  # (4,1,2)
-                color = randint(0, 255), randint(0, 255), randint(0, 255)
+                color = str_to_rgb(res.names[int(cls_id)])
                 cv2.polylines(frame_bgr, [pts], isClosed=True, color=color, thickness=2)
                 label = f"{res.names[int(cls_id)]} {conf:.2f}"
                 x, y = pts[0, 0]
-                cv2.putText(frame_bgr, label, (x, max(0, y - 5)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
-            
+                cv2.putText(
+                    frame_bgr,
+                    label,
+                    (x, max(0, y - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    1,
+                    cv2.LINE_AA,
+                )
+
         with frame_lock:
             latest_vis = frame_bgr
 
@@ -136,14 +146,21 @@ def cv_thread_func():
         if frame_bgr is None:
             continue
         results = model.predict(
-            source=frame_bgr, imgsz=IMGSZ, conf=CONF,
-            save=False, stream=False, verbose=False, device="cpu"
+            source=frame_bgr,
+            imgsz=IMGSZ,
+            conf=CONF,
+            save=False,
+            stream=False,
+            verbose=False,
+            device="cpu",
         )
         yolo_latest_res = results
         time.sleep(1.0 / CV_FPS)
 
+
 def update(dt):
-    window.dispatch_event('on_draw')
+    window.dispatch_event("on_draw")
+
 
 def _on_close_handler():
     stop_event.set()
@@ -160,6 +177,8 @@ if __name__ == "__main__":
         capture.start_free_threaded()
         inference_thread.start()
         cv_thread.start()
+        bot = Bot(shared_state)
+        #bot.dock.undock()
         pyglet.app.run()
     finally:
         stop_event.set()
